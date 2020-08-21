@@ -1,4 +1,5 @@
 import kotlinx.metadata.KmDeclarationContainer
+import kotlinx.metadata.KmEffectExpression
 import kotlinx.metadata.KmEffectType
 import kotlinx.metadata.KmFunction
 import kotlinx.metadata.jvm.KotlinClassHeader
@@ -54,38 +55,60 @@ private fun extractContractInfo(kmFunction: KmFunction) {
         }
         print(" -> ")
         require(kmEffect.conclusion != null) // Contracts must have conditional effects
-        val andArgsCount = kmEffect.conclusion!!.andArguments.size
-        val orArgsCount = kmEffect.conclusion!!.orArguments.size
-        if (andArgsCount == 0 && orArgsCount == 0) {
-            val paramIndex = kmEffect.conclusion!!.parameterIndex!!
-            val paramName =
-                    if (paramIndex == 0) "this@${kmFunction.name}"
-                    else kmFunction.valueParameters[paramIndex - 1].name
-
-            val instanceCheck = kmEffect.conclusion!!.isInstanceType
-            val flags = kmEffect.conclusion!!.flags
-
-            when {
-                instanceCheck != null -> {
-                    println("$paramName is ${instanceCheck.classifier}")
-                }
-                flags != 0 -> {
-                    val constValue = kmEffect.conclusion!!.constantValue
-                    val compSign = when (flags) {
-                        2 -> " == "
-                        3 -> " != "
-                        else -> throw IllegalStateException("Unknown flag: $flags")
-                    }
-                    println(paramName + compSign + constValue)
-                }
-                else -> {
-                    println(paramName)
-                }
-            }
-
-        }
+        println(parseExpression(kmFunction, kmEffect.conclusion!!))
     } ?: return
 }
+
+private fun parseExpression(function: KmFunction, expression: KmEffectExpression): String {
+    val andArgsCount = expression.andArguments.size
+    val orArgsCount = expression.orArguments.size
+
+    val result = StringBuilder()
+
+    val paramIndex = expression.parameterIndex
+    if (paramIndex != null) {
+        val paramName =
+                if (paramIndex == 0) "this@${function.name}"
+                else function.valueParameters[paramIndex - 1].name
+        val instanceCheck = expression.isInstanceType
+        val flags = expression.flags
+        when {
+            instanceCheck != null -> {
+                val isWord = if (flags == 0) "is" else "!is"
+                result.append("$paramName $isWord ${instanceCheck.classifier}")
+            }
+            flags != 0 -> {
+                val constValue = expression.constantValue
+                when (flags) {
+                    1 -> result.append("!").append(paramName)
+                    2 -> result.append(paramName).append(" == ").append(constValue)
+                    3 -> result.append(paramName).append(" != ").append(constValue)
+                    else -> throw IllegalStateException("Unknown flag: $flags")
+                }
+            }
+            else -> {
+                result.append(paramName)
+            }
+        }
+    }
+
+    if (andArgsCount != 0) {
+        expression.andArguments.forEach {
+            result.append(" && ").append(parseExpression(function, it))
+        }
+    }
+    if (orArgsCount != 0) {
+        expression.orArguments.forEach {
+            result.append(" || ").append(parseExpression(function, it))
+        }
+    }
+
+    if (result.startsWith(" || ") || result.startsWith(" && "))
+        result.delete(0, 4)
+
+    return result.toString()
+}
+
 
 /**
  * Loads the AnnotationNode corresponding to the @kotlin.Metadata annotation on the .class file,
