@@ -15,12 +15,18 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kotlin.code.style>official</kotlin.code.style>
         <kotlin.compiler.jvmTarget>1.8</kotlin.compiler.jvmTarget>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <repositories>
         <repository>
             <id>mavenCentral</id>
             <url>https://repo1.maven.org/maven2/</url>
+        </repository>
+        <repository>
+            <id>bintray-vorpal-research-kotlin-maven</id>
+            <url>https://dl.bintray.com/vorpal-research/kotlin-maven</url>
         </repository>
     </repositories>
 
@@ -77,6 +83,12 @@
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm-util</artifactId>
             <version>8.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.research</groupId>
+            <artifactId>kfg</artifactId>
+            <version>0.0.10-2</version>
+            <type>pom</type>
         </dependency>
     </dependencies>
 </project>
