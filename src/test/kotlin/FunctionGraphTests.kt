@@ -49,6 +49,7 @@ class FunctionGraphTests {
         }
         assertTrue(this::entryNode.isInitialized)
         assertTrue(this::returnNode.isInitialized)
+        assertTrue(entryNode.predecessors.isNullOrEmpty())
 
         val graph = FunctionGraph(methodName, nodes, entryNode, returnNode)
         assertEquals(entryNode, graph.findNodeByName("%entry0"))

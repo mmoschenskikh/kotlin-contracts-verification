@@ -11,7 +11,7 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-class KfgExtensionsTest {
+class KfgExtensionsTests {
 
     @Test
     fun parseLabelTest() {
