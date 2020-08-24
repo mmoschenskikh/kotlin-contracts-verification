@@ -1,5 +1,3 @@
-package samples
-
 import analysis.parseLabel
 import org.jetbrains.research.kfg.ClassManager
 import org.jetbrains.research.kfg.KfgConfig
@@ -24,7 +22,6 @@ class KfgExtensionsTest {
         val m = Method(cm, methodNode, c)
         CfgBuilder(cm, m).build()
         assertTrue { m.graphView.any { it.parseLabel().name == "%entry0" } }
-        assertTrue { m.graphView.none { "%entry0" in (it.parseLabel().successors ?: listOf()) } }
         assertTrue { m.graphView.any { "%entry0" in (it.parseLabel().predecessors ?: listOf()) } }
     }
 }
