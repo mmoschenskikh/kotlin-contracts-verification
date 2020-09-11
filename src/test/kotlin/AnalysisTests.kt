@@ -6,6 +6,7 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+// Some tests may not pass when running multiple tests. Just try to run them separately.
 class AnalysisTests {
 
     private fun prepareForContractCheck(
@@ -75,6 +76,14 @@ class AnalysisTests {
         val functionName = "contractOnReceiver"
         val states = prepareForContractCheck(functionName, rnntsClassPath)
         val conditions = mapOf("arg$0" to AnalysisLattice.Element.NOTNULL)
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
+    }
+
+    @Test
+    fun contractInContractTest() {
+        val functionName = "contractInsideContract"
+        val states = prepareForContractCheck(functionName, rnntsClassPath)
+        val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)
         assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
     }
 }

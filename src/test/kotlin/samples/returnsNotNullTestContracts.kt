@@ -42,3 +42,11 @@ fun Any?.contractOnReceiver(): Unit? {
     }
     return if (this == null) null else Unit
 }
+
+@ExperimentalContracts
+fun contractInsideContract(condition: Boolean) {
+    contract {
+        returnsNotNull() implies (condition)
+    }
+    require(condition)
+}
