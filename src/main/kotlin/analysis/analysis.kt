@@ -45,6 +45,8 @@ private fun collectMethodVariables(basicBlocks: List<BasicBlock>): Set<String> {
             }
         }
     }
+    rules.clear()
+    independent.clear()
     return variables.toSet()
 }
 

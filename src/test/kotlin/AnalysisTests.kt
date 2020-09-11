@@ -6,7 +6,6 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-// Some tests may not pass when running multiple tests. Just try to run them separately.
 class AnalysisTests {
 
     private fun prepareForContractCheck(
