@@ -162,16 +162,6 @@ private fun modify(
                 if (!rules.containsKey(rightSide)) {
                     rules[rightSide] = Rule(variableName, Rule.Type.COPY)
                 }
-            } else if (booleanValueOfMatcher.matches()) {
-                val rightSideVariable = booleanValueOfMatcher.group(1)
-                val rightSideVariableState = blockState[rightSideVariable]!!.state
-                if (!rules.containsKey(rightSideVariable)) {
-                    if (rightSideVariableState in concreteValues) {
-                        blockState[variableName]!!.state = rightSideVariableState
-                    } else if (rightSideVariable !in independent) {
-                        rules[rightSideVariable] = Rule(variableName, Rule.Type.COPY)
-                    }
-                }
             } else if (comparisonMatcher.matches()) {
                 val operand = comparisonMatcher.group(1)
                 val operator = comparisonMatcher.group(2)
@@ -204,34 +194,28 @@ private fun modify(
                         rules[rightSide] = Rule(variableName, Rule.Type.COPY)
                     }
                 }
-            } else if (booleanCastMatcher.matches()) {
-                val rightSideVariable = booleanCastMatcher.group(1)
-                val rightSideVariableState = blockState[rightSideVariable]!!.state
-
-                if (!rules.containsKey(rightSideVariable)) {
-                    if (rightSideVariableState in concreteValues) {
-                        blockState[variableName]!!.state = rightSideVariableState
-                    } else if (rightSideVariable !in independent) {
-                        rules[rightSideVariable] = Rule(variableName, Rule.Type.COPY)
-                    }
-                }
-            } else if (staticBooleanValueMatcher.matches()) {
-                val rightSideVariable = staticBooleanValueMatcher.group(1)
-                val rightSideVariableState = blockState[rightSideVariable]!!.state
-
-                if (!rules.containsKey(rightSideVariable)) {
-                    if (rightSideVariableState in concreteValues) {
-                        blockState[variableName]!!.state = rightSideVariableState
-                    } else if (rightSideVariable !in independent) {
-                        rules[rightSideVariable] = Rule(variableName, Rule.Type.COPY)
-                    }
-                }
             } else {
+                val rightSideVariable = when {
+                    staticBooleanValueMatcher.matches() -> staticBooleanValueMatcher.group(1)
+                    booleanCastMatcher.matches() -> booleanCastMatcher.group(1)
+                    booleanValueOfMatcher.matches() -> booleanValueOfMatcher.group(1)
+                    else -> null
+                }
+                if (rightSideVariable != null) {
+                    val rightSideVariableState = blockState[rightSideVariable]!!.state
 
-
-                blockState[variableName]!!.state = AnalysisLattice.Element.OTHER
-                independent.add(variableName)
-                rules.remove(variableName)
+                    if (!rules.containsKey(rightSideVariable)) {
+                        if (rightSideVariableState in concreteValues) {
+                            blockState[variableName]!!.state = rightSideVariableState
+                        } else if (rightSideVariable !in independent) {
+                            rules[rightSideVariable] = Rule(variableName, Rule.Type.COPY)
+                        }
+                    }
+                } else {
+                    blockState[variableName]!!.state = AnalysisLattice.Element.OTHER
+                    independent.add(variableName)
+                    rules.remove(variableName)
+                }
             }
         }
     }
