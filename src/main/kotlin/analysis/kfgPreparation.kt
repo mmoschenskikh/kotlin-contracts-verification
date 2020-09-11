@@ -25,19 +25,21 @@ fun prepareFunctionCfg(classNode: ClassNode, functionName: String): Method {
     val assignments: MutableSet<String> = mutableSetOf()
     val instructionsToDelete: MutableMap<Instruction, BasicBlock> = mutableMapOf()
 
+    val phiRegex = Regex("[\\da-z%\$]+ = phi \\{(.*)}")
+
     // Collecting info about extra blocks needed for analysis
     analyzingMethod.basicBlocks.forEach { bb ->
         bb.instructions.forEach { inst ->
             val stringInst = inst.print()
-            if (stringInst.contains("phi")) {
+            if (stringInst.matches(phiRegex)) {
                 assignments.add(bb.name.toString())
                 instructionsToDelete[inst] = bb
             }
-            if (stringInst.startsWith("if")) {
-                val conditionVariable = inst.operands.first().toString()
-                val ifInstruction = inst.print().split(" ")
-                val thenBlock = ifInstruction[ifInstruction.indexOf("goto") + 1]
-                val elseBlock = ifInstruction[ifInstruction.indexOf("else") + 1]
+            val ifMatcher = Regex("^if \\((.+)\\) goto (.+) else (.+)\$").toPattern().matcher(stringInst)
+            if (ifMatcher.matches()) {
+                val conditionVariable = ifMatcher.group(1)
+                val thenBlock = ifMatcher.group(2)
+                val elseBlock = ifMatcher.group(3)
                 if (assertions[thenBlock] == null)
                     assertions[thenBlock] = mutableSetOf()
                 if (assertions[elseBlock] == null)
@@ -56,7 +58,9 @@ fun prepareFunctionCfg(classNode: ClassNode, functionName: String): Method {
             if (blockName in assignments) {
                 val stringInst = inst.print()
                 val assignmentVariable = inst.get()
-                val assignmentOptions = stringInst.dropWhile { it != '{' }.drop(1).dropLast(1).split(";")
+                val matcher = phiRegex.toPattern().matcher(stringInst)
+                check(matcher.matches())
+                val assignmentOptions = matcher.group(1).split(";")
                     .map {
                         with(it.trim().split(" -> ")) {
                             this.first() to this.last()
@@ -84,12 +88,9 @@ fun prepareFunctionCfg(classNode: ClassNode, functionName: String): Method {
                     val condBlock =
                         bb.predecessors.firstOrNull { predecessor ->
                             predecessor.instructions.any {
-                                with(it.print()) {
-                                    this.matches(Regex("^if.*goto.*else$")) && this.contains(condition)
-                                }
+                                it.print().matches(Regex("^if \\($condition\\) goto.*else.*$"))
                             }
-                        }
-                            ?: bb.predecessors.first()
+                        } ?: bb.predecessors.first()
                     insertBlock(condBlock, block, bb)
 
                     blocksToAdd.add(block)
