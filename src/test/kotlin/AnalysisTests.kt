@@ -15,7 +15,7 @@ class AnalysisTests {
         val bytes = File(classPath).readBytes()
         val classNode = getClassNode(bytes).recomputeFrames(ClassLoader.getSystemClassLoader())
         val method = prepareFunctionCfg(classNode, functionName)
-        return analyze(method)
+        return Analyzer().analyze(method)
     }
 
     @Test
