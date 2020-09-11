@@ -1,10 +1,5 @@
 package analysis
 
-import Copy
-import InvertBoolean
-import NotNullWhenTrue
-import NullWhenTrue
-import Rule
 import org.jetbrains.research.kfg.InvalidStateError
 import org.jetbrains.research.kfg.ir.BasicBlock
 import org.jetbrains.research.kfg.ir.Method
@@ -159,7 +154,7 @@ private fun modify(
 
             if (rightSide.matches(Regex(".+ instanceOf .+")) && blockState.containsKey(rightSide)) {
                 if (!rules.containsKey(rightSide)) {
-                    rules[rightSide] = Copy(variableName)
+                    rules[rightSide] = Rule(variableName, Rule.Type.COPY)
                 }
             } else if (booleanValueOfMatcher.matches()) {
                 val rightSideVariable = booleanValueOfMatcher.group(1)
@@ -168,7 +163,7 @@ private fun modify(
                     if (rightSideVariableState in concreteValues) {
                         blockState[variableName]!!.state = rightSideVariableState
                     } else if (rightSideVariable !in independent) {
-                        rules[rightSideVariable] = Copy(variableName)
+                        rules[rightSideVariable] = Rule(variableName, Rule.Type.COPY)
                     }
                 }
             } else if (comparisonMatcher.matches()) {
@@ -183,10 +178,13 @@ private fun modify(
                     } else if (operand !in independent) {
                         val falseConstants = setOf("false", "0")
                         rules[operand] = when {
-                            operator == "==" && constant in falseConstants -> InvertBoolean(variableName)
-                            operator == "!=" && constant in falseConstants -> Copy(variableName)
-                            operator == "==" && constant == "null" -> NullWhenTrue(variableName)
-                            operator == "!=" && constant == "null" -> NotNullWhenTrue(variableName)
+                            operator == "==" && constant in falseConstants -> Rule(
+                                variableName,
+                                Rule.Type.INVERT_BOOLEAN
+                            )
+                            operator == "!=" && constant in falseConstants -> Rule(variableName, Rule.Type.COPY)
+                            operator == "==" && constant == "null" -> Rule(variableName, Rule.Type.NULL_WHEN_TRUE)
+                            operator == "!=" && constant == "null" -> Rule(variableName, Rule.Type.NOT_NULL_WHEN_TRUE)
                             else -> throw IllegalStateException("The case is unhandled | $operand $operator $constant")
                         }
                     }
@@ -197,7 +195,7 @@ private fun modify(
                     if (state in concreteValues) {
                         blockState[variableName]!!.state = state
                     } else if (rightSide !in independent) {
-                        rules[rightSide] = Copy(variableName)
+                        rules[rightSide] = Rule(variableName, Rule.Type.COPY)
                     }
                 }
             } else {
@@ -215,10 +213,14 @@ private fun applyRule(
     dependState: AnalysisLattice.Element
 ): AnalysisLattice.Element {
     val booleanValues = setOf(AnalysisLattice.Element.TRUE, AnalysisLattice.Element.FALSE)
-    return when (rule) {
-        is Copy -> dependState
-        is InvertBoolean -> if (dependState in booleanValues) invertBoolean(dependState) else state
-        is NullWhenTrue ->
+    return when (rule.ruleType) {
+        Rule.Type.COPY ->
+            dependState
+        Rule.Type.INVERT_BOOLEAN ->
+            if (dependState in booleanValues)
+                invertBoolean(dependState)
+            else state
+        Rule.Type.NULL_WHEN_TRUE ->
             if (dependState in booleanValues) {
                 if (dependState == AnalysisLattice.Element.TRUE)
                     AnalysisLattice.Element.NULL
@@ -227,7 +229,7 @@ private fun applyRule(
             } else {
                 state
             }
-        is NotNullWhenTrue ->
+        Rule.Type.NOT_NULL_WHEN_TRUE ->
             if (dependState in booleanValues) {
                 if (dependState == AnalysisLattice.Element.TRUE)
                     AnalysisLattice.Element.NOTNULL
@@ -236,7 +238,6 @@ private fun applyRule(
             } else {
                 state
             }
-        else -> state
     }
 }
 
