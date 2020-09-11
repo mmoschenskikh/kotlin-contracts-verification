@@ -56,13 +56,21 @@ fun checkReturnsNotNullContract(
     return ContractInfo.FUNCTION_MATCHES_THE_CONTRACT
 }
 
+private val notNullValues = setOf(
+    AnalysisLattice.Element.TRUE,
+    AnalysisLattice.Element.FALSE,
+    AnalysisLattice.Element.OTHER,
+    AnalysisLattice.Element.NOTNULL
+)
 
 private fun checkConditions(
     blockState: Map<String, AnalysisLattice>,
     conditions: Map<String, AnalysisLattice.Element>
 ): ContractInfo =
     if (conditions.all {
-            (blockState[it.key] ?: return ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT).state == it.value
+            with((blockState[it.key] ?: return ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT).state) {
+                this == it.value || (it.value == AnalysisLattice.Element.NOTNULL && this in notNullValues)
+            }
         })
         ContractInfo.FUNCTION_MATCHES_THE_CONTRACT
     else
