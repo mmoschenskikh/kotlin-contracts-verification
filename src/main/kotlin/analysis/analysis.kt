@@ -79,18 +79,17 @@ private fun transform(
 ) {
     val blockName = basicBlock.name.toString()
     blocksState[basicBlock]?.forEach { s, lattice ->
-        val predecessorsStates = mutableSetOf<AnalysisLattice.Element>()
-
-        basicBlock.predecessors.forEach {
-            var predState = blocksState[it]!![s]!!.state
-            if (rules.containsKey(s)) {
-                val rule = rules[s]!!
-                val dependState = blocksState[it]!![rule.dependingOn]!!.state
-                predState = applyRule(rule, predState, dependState)
+        if (rules.containsKey(s)) {
+            val rule = rules[s]!!
+            val dependState = blocksState[basicBlock]!![rule.dependingOn]!!.state
+            lattice.state = applyRule(rule, lattice.state, dependState)
+        } else {
+            val predecessorsStates = mutableSetOf<AnalysisLattice.Element>()
+            basicBlock.predecessors.forEach {
+                predecessorsStates.add(blocksState[it]!![s]!!.state)
             }
-            predecessorsStates.add(predState)
+            lattice.state = lattice.join(*predecessorsStates.toTypedArray(), lattice.state)
         }
-        lattice.state = lattice.join(*predecessorsStates.toTypedArray(), lattice.state)
     }
     val assertMatcher = Regex("%assert\\((.*)\\)").toPattern().matcher(blockName)
     val phiMatcher = Regex("%phi\\(([\\da-z%\$]+) = (.+)\\)").toPattern().matcher(blockName)
@@ -138,8 +137,6 @@ private fun modify(
         rules.remove(variableName)
         independent.add(variableName)
     }
-
-    var v = "xxxxxxxxxx"
     when (rightSide) { // Simple cases; I haven't see pure "true" or "false" here
         "null" -> blockState[variableName]!!.state = AnalysisLattice.Element.NULL
 
@@ -164,7 +161,6 @@ private fun modify(
                 if (!rules.containsKey(rightSide)) {
                     rules[rightSide] = Copy(variableName)
                 }
-                v = rightSide
             } else if (booleanValueOfMatcher.matches()) {
                 val rightSideVariable = booleanValueOfMatcher.group(1)
                 val rightSideVariableState = blockState[rightSideVariable]!!.state
@@ -175,7 +171,6 @@ private fun modify(
                         rules[rightSideVariable] = Copy(variableName)
                     }
                 }
-                v = rightSideVariable
             } else if (comparisonMatcher.matches()) {
                 val operand = comparisonMatcher.group(1)
                 val operator = comparisonMatcher.group(2)
@@ -196,7 +191,6 @@ private fun modify(
                         }
                     }
                 }
-                v = operand
             } else if (rightSide.matches(Regex("%\\d*"))) {
                 val state = blockState[rightSide]!!.state
                 if (!rules.containsKey(rightSide)) {
@@ -206,16 +200,10 @@ private fun modify(
                         rules[rightSide] = Copy(variableName)
                     }
                 }
-                v = rightSide
             } else {
                 blockState[variableName]!!.state = AnalysisLattice.Element.OTHER
             }
         }
-    }
-    if (rules.containsKey(v)) {
-        val r = rules[v]!!
-        val dependState = blockState[r.dependingOn]!!.state
-        applyRule(rules[v]!!, dependState, blockState[v]!!.state)
     }
     return blockState
 //    TODO
@@ -223,13 +211,13 @@ private fun modify(
 
 private fun applyRule(
     rule: Rule,
-    predState: AnalysisLattice.Element,
+    state: AnalysisLattice.Element,
     dependState: AnalysisLattice.Element
 ): AnalysisLattice.Element {
     val booleanValues = setOf(AnalysisLattice.Element.TRUE, AnalysisLattice.Element.FALSE)
     return when (rule) {
         is Copy -> dependState
-        is InvertBoolean -> if (dependState in booleanValues) invertBoolean(dependState) else predState
+        is InvertBoolean -> if (dependState in booleanValues) invertBoolean(dependState) else state
         is NullWhenTrue ->
             if (dependState in booleanValues) {
                 if (dependState == AnalysisLattice.Element.TRUE)
@@ -237,7 +225,7 @@ private fun applyRule(
                 else
                     AnalysisLattice.Element.NOTNULL
             } else {
-                predState
+                state
             }
         is NotNullWhenTrue ->
             if (dependState in booleanValues) {
@@ -246,9 +234,9 @@ private fun applyRule(
                 else
                     AnalysisLattice.Element.NULL
             } else {
-                predState
+                state
             }
-        else -> predState
+        else -> state
     }
 }
 
