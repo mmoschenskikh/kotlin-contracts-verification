@@ -1,13 +1,18 @@
 package analysis
 
+import Copy
+import InvertBoolean
+import NotNullWhenTrue
+import NullWhenTrue
+import Rule
 import org.jetbrains.research.kfg.InvalidStateError
 import org.jetbrains.research.kfg.ir.BasicBlock
 import org.jetbrains.research.kfg.ir.Method
 
-fun analyze(method: Method) {
+fun analyze(method: Method): Map<BasicBlock, Map<String, AnalysisLattice>> {
     val basicBlocks = method.basicBlocks
     val blocksState: MutableMap<BasicBlock, MutableMap<String, AnalysisLattice>> = mutableMapOf()
-    val variables = collectMethodVariables(basicBlocks)
+    val variables = collectMethodVariables(basicBlocks) + collectInstanceOfChecks(basicBlocks)
     basicBlocks.forEach { bb ->
         blocksState[bb] = variables.map { it to AnalysisLattice() }.toMap().toMutableMap()
     }
@@ -26,8 +31,10 @@ fun analyze(method: Method) {
         transform(basicBlock, blocksState)
         if (state != blocksState[basicBlock]) {
             workList.addAll(basicBlock.successors)
+            workList.addAll(basicBlock.predecessors)
         }
     }
+    return blocksState
 }
 
 private fun collectMethodVariables(basicBlocks: List<BasicBlock>): Set<String> {
@@ -43,7 +50,211 @@ private fun collectMethodVariables(basicBlocks: List<BasicBlock>): Set<String> {
             }
         }
     }
-    return variables
+    return variables.toSet()
 }
 
-private fun transform(basicBlock: BasicBlock, state: MutableMap<BasicBlock, MutableMap<String, AnalysisLattice>>) {}
+private fun collectInstanceOfChecks(basicBlocks: List<BasicBlock>): Set<String> {
+    val checks = mutableSetOf<String>()
+    basicBlocks.forEach { bb ->
+        bb.instructions.forEach { inst ->
+            try {
+                inst.get()
+                val rightSide = inst.print().split(" = ").last()
+                if (rightSide.matches(Regex(".* instanceOf .*"))) {
+                    checks.add(rightSide)
+                }
+            } catch (ignored: InvalidStateError) {
+            }
+        }
+    }
+    return checks.toSet()
+}
+
+private val rules: MutableMap<String, Rule> = mutableMapOf()
+private val independent: MutableSet<String> = mutableSetOf()
+
+private fun transform(
+    basicBlock: BasicBlock,
+    blocksState: MutableMap<BasicBlock, MutableMap<String, AnalysisLattice>>
+) {
+    val blockName = basicBlock.name.toString()
+    blocksState[basicBlock]?.forEach { s, lattice ->
+        val predecessorsStates = mutableSetOf<AnalysisLattice.Element>()
+
+        basicBlock.predecessors.forEach {
+            var predState = blocksState[it]!![s]!!.state
+            if (rules.containsKey(s)) {
+                val rule = rules[s]!!
+                val dependState = blocksState[it]!![rule.dependingOn]!!.state
+                predState = applyRule(rule, predState, dependState)
+            }
+            predecessorsStates.add(predState)
+        }
+        lattice.state = lattice.join(*predecessorsStates.toTypedArray(), lattice.state)
+    }
+    val assertMatcher = Regex("%assert\\((.*)\\)").toPattern().matcher(blockName)
+    val phiMatcher = Regex("%phi\\(([\\da-z%\$]+) = (.+)\\)").toPattern().matcher(blockName)
+    when {
+        assertMatcher.matches() -> {
+            var varName = assertMatcher.group(1)
+            val state =
+                if (varName.startsWith("!")) {
+                    varName = varName.substring(1)
+                    AnalysisLattice.Element.FALSE
+                } else {
+                    AnalysisLattice.Element.TRUE
+                }
+            blocksState[basicBlock]!![varName]!!.state = state
+        }
+        phiMatcher.matches() -> {
+            val varName = phiMatcher.group(1)
+            val rightSide = phiMatcher.group(2)
+            blocksState[basicBlock] = modify(varName, rightSide, blocksState[basicBlock]!!) // TODO
+        }
+        else -> {
+            val assignmentPattern = Regex("([\\da-z%\$]+) = (.+)").toPattern()
+            basicBlock.instructions.forEach { instruction ->
+                try {
+                    val assignmentMatcher = assignmentPattern.matcher(instruction.print())
+
+                    val varName = instruction.get().toString()
+                    assignmentMatcher.matches()
+                    val rightSide = assignmentMatcher.group(2)
+                    blocksState[basicBlock] = modify(varName, rightSide, blocksState[basicBlock]!!) // TODO
+                } catch (ignored: InvalidStateError) {
+                }
+            }
+        }
+    }
+}
+
+private fun modify(
+    variableName: String,
+    rightSide: String,
+    blockState: MutableMap<String, AnalysisLattice>
+): MutableMap<String, AnalysisLattice> {
+    val constants: Set<String> = setOf("null", "1", "0", "static Boolean.valueOf(1)", "static Boolean.valueOf(0)")
+    if (rightSide in constants) {
+        rules.remove(variableName)
+        independent.add(variableName)
+    }
+
+    var v = "xxxxxxxxxx"
+    when (rightSide) { // Simple cases; I haven't see pure "true" or "false" here
+        "null" -> blockState[variableName]!!.state = AnalysisLattice.Element.NULL
+
+        "1" -> blockState[variableName]!!.state = AnalysisLattice.Element.TRUE
+        "static Boolean.valueOf(1)" -> blockState[variableName]!!.state = AnalysisLattice.Element.TRUE
+
+        "0" -> blockState[variableName]!!.state = AnalysisLattice.Element.FALSE
+        "static Boolean.valueOf(0)" -> blockState[variableName]!!.state = AnalysisLattice.Element.FALSE
+
+        else -> {
+            val concreteValues: Set<AnalysisLattice.Element> = setOf(
+                AnalysisLattice.Element.TRUE,
+                AnalysisLattice.Element.FALSE,
+                AnalysisLattice.Element.OTHER,
+                AnalysisLattice.Element.NULL
+            )
+
+            val booleanValueOfMatcher = Regex("static Boolean.valueOf\\((.+)\\)").toPattern().matcher(rightSide)
+            val comparisonMatcher = Regex("\\((.*) ([!=]=) ([false0nu]+)\\)").toPattern().matcher(rightSide)
+
+            if (rightSide.matches(Regex(".+ instanceOf .+")) && blockState.containsKey(rightSide)) {
+                if (!rules.containsKey(rightSide)) {
+                    rules[rightSide] = Copy(variableName)
+                }
+                v = rightSide
+            } else if (booleanValueOfMatcher.matches()) {
+                val rightSideVariable = booleanValueOfMatcher.group(1)
+                val rightSideVariableState = blockState[rightSideVariable]!!.state
+                if (!rules.containsKey(rightSideVariable)) {
+                    if (rightSideVariableState in concreteValues) {
+                        blockState[variableName]!!.state = rightSideVariableState
+                    } else if (rightSideVariable !in independent) {
+                        rules[rightSideVariable] = Copy(variableName)
+                    }
+                }
+                v = rightSideVariable
+            } else if (comparisonMatcher.matches()) {
+                val operand = comparisonMatcher.group(1)
+                val operator = comparisonMatcher.group(2)
+                val constant = comparisonMatcher.group(3)
+
+                val operandState = blockState[operand]!!.state
+                if (!rules.containsKey(operand)) {
+                    if (operandState in concreteValues) {
+                        blockState[variableName]!!.state = operandState
+                    } else if (operand !in independent) {
+                        val falseConstants = setOf("false", "0")
+                        rules[operand] = when {
+                            operator == "==" && constant in falseConstants -> InvertBoolean(variableName)
+                            operator == "!=" && constant in falseConstants -> Copy(variableName)
+                            operator == "==" && constant == "null" -> NullWhenTrue(variableName)
+                            operator == "!=" && constant == "null" -> NotNullWhenTrue(variableName)
+                            else -> throw IllegalStateException("The case is unhandled | $operand $operator $constant")
+                        }
+                    }
+                }
+                v = operand
+            } else if (rightSide.matches(Regex("%\\d*"))) {
+                val state = blockState[rightSide]!!.state
+                if (!rules.containsKey(rightSide)) {
+                    if (state in concreteValues) {
+                        blockState[variableName]!!.state = state
+                    } else if (rightSide !in independent) {
+                        rules[rightSide] = Copy(variableName)
+                    }
+                }
+                v = rightSide
+            } else {
+                blockState[variableName]!!.state = AnalysisLattice.Element.OTHER
+            }
+        }
+    }
+    if (rules.containsKey(v)) {
+        val r = rules[v]!!
+        val dependState = blockState[r.dependingOn]!!.state
+        applyRule(rules[v]!!, dependState, blockState[v]!!.state)
+    }
+    return blockState
+//    TODO
+}
+
+private fun applyRule(
+    rule: Rule,
+    predState: AnalysisLattice.Element,
+    dependState: AnalysisLattice.Element
+): AnalysisLattice.Element {
+    val booleanValues = setOf(AnalysisLattice.Element.TRUE, AnalysisLattice.Element.FALSE)
+    return when (rule) {
+        is Copy -> dependState
+        is InvertBoolean -> if (dependState in booleanValues) invertBoolean(dependState) else predState
+        is NullWhenTrue ->
+            if (dependState in booleanValues) {
+                if (dependState == AnalysisLattice.Element.TRUE)
+                    AnalysisLattice.Element.NULL
+                else
+                    AnalysisLattice.Element.NOTNULL
+            } else {
+                predState
+            }
+        is NotNullWhenTrue ->
+            if (dependState in booleanValues) {
+                if (dependState == AnalysisLattice.Element.TRUE)
+                    AnalysisLattice.Element.NOTNULL
+                else
+                    AnalysisLattice.Element.NULL
+            } else {
+                predState
+            }
+        else -> predState
+    }
+}
+
+private fun invertBoolean(booleanElement: AnalysisLattice.Element): AnalysisLattice.Element =
+    when (booleanElement) {
+        AnalysisLattice.Element.TRUE -> AnalysisLattice.Element.FALSE
+        AnalysisLattice.Element.FALSE -> AnalysisLattice.Element.TRUE
+        else -> throw IllegalArgumentException("Cannot invert non-boolean state")
+    }
