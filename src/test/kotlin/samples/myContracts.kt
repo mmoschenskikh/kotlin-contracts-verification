@@ -16,9 +16,9 @@ fun Boolean?.multipleEffects(number: Int?, condition: Boolean, block: () -> Unit
 }
 
 @ExperimentalContracts
-fun String?.contractOnReceiver() {
+fun CharSequence?.contractOnReceiver() {
     contract {
-        returnsNotNull() implies (this@contractOnReceiver is String)
+        returnsNotNull() implies (this@contractOnReceiver is String?)
     }
     return
 }

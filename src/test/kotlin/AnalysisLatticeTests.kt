@@ -22,5 +22,6 @@ class AnalysisLatticeTests {
         elements.forEach {
             assertEquals(it, lattice.join(it, bottom))
         }
+        assertEquals(top, lattice.join(AnalysisLattice.Element.NULL, AnalysisLattice.Element.NOTNULL))
     }
 }

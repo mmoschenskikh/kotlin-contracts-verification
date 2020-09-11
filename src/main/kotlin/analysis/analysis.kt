@@ -74,15 +74,19 @@ private fun transform(
 ) {
     val blockName = basicBlock.name.toString()
     blocksState[basicBlock]?.forEach { s, lattice ->
+        val predecessorsStates = mutableSetOf<AnalysisLattice.Element>()
+        basicBlock.predecessors.forEach {
+            predecessorsStates.add(blocksState[it]!![s]!!.state)
+        }
         if (rules.containsKey(s)) {
             val rule = rules[s]!!
             val dependState = blocksState[basicBlock]!![rule.dependingOn]!!.state
-            lattice.state = applyRule(rule, lattice.state, dependState)
+            lattice.state = applyRule(rule, dependState) ?: lattice.join(
+                *predecessorsStates.toTypedArray(),
+                lattice.state
+            )
+
         } else {
-            val predecessorsStates = mutableSetOf<AnalysisLattice.Element>()
-            basicBlock.predecessors.forEach {
-                predecessorsStates.add(blocksState[it]!![s]!!.state)
-            }
             lattice.state = lattice.join(*predecessorsStates.toTypedArray(), lattice.state)
         }
     }
@@ -200,6 +204,8 @@ private fun modify(
                 }
             } else {
                 blockState[variableName]!!.state = AnalysisLattice.Element.OTHER
+                independent.add(variableName)
+                rules.remove(variableName)
             }
         }
     }
@@ -209,9 +215,8 @@ private fun modify(
 
 private fun applyRule(
     rule: Rule,
-    state: AnalysisLattice.Element,
     dependState: AnalysisLattice.Element
-): AnalysisLattice.Element {
+): AnalysisLattice.Element? {
     val booleanValues = setOf(AnalysisLattice.Element.TRUE, AnalysisLattice.Element.FALSE)
     return when (rule.ruleType) {
         Rule.Type.COPY ->
@@ -219,7 +224,8 @@ private fun applyRule(
         Rule.Type.INVERT_BOOLEAN ->
             if (dependState in booleanValues)
                 invertBoolean(dependState)
-            else state
+            else
+                null
         Rule.Type.NULL_WHEN_TRUE ->
             if (dependState in booleanValues) {
                 if (dependState == AnalysisLattice.Element.TRUE)
@@ -227,7 +233,7 @@ private fun applyRule(
                 else
                     AnalysisLattice.Element.NOTNULL
             } else {
-                state
+                null
             }
         Rule.Type.NOT_NULL_WHEN_TRUE ->
             if (dependState in booleanValues) {
@@ -236,7 +242,7 @@ private fun applyRule(
                 else
                     AnalysisLattice.Element.NULL
             } else {
-                state
+                null
             }
     }
 }
