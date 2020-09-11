@@ -154,6 +154,8 @@ private fun modify(
             )
 
             val booleanValueOfMatcher = Regex("static Boolean.valueOf\\((.+)\\)").toPattern().matcher(rightSide)
+            val staticBooleanValueMatcher = Regex("virtual (.+)\\.booleanValue()").toPattern().matcher(rightSide)
+            val booleanCastMatcher = Regex("\\(java/lang/Boolean\\) (.+)").toPattern().matcher(rightSide)
             val comparisonMatcher = Regex("\\((.*) ([!=]=) ([false0nu]+)\\)").toPattern().matcher(rightSide)
 
             if (rightSide.matches(Regex(".+ instanceOf .+")) && blockState.containsKey(rightSide)) {
@@ -202,7 +204,31 @@ private fun modify(
                         rules[rightSide] = Rule(variableName, Rule.Type.COPY)
                     }
                 }
+            } else if (booleanCastMatcher.matches()) {
+                val rightSideVariable = booleanCastMatcher.group(1)
+                val rightSideVariableState = blockState[rightSideVariable]!!.state
+
+                if (!rules.containsKey(rightSideVariable)) {
+                    if (rightSideVariableState in concreteValues) {
+                        blockState[variableName]!!.state = rightSideVariableState
+                    } else if (rightSideVariable !in independent) {
+                        rules[rightSideVariable] = Rule(variableName, Rule.Type.COPY)
+                    }
+                }
+            } else if (staticBooleanValueMatcher.matches()) {
+                val rightSideVariable = staticBooleanValueMatcher.group(1)
+                val rightSideVariableState = blockState[rightSideVariable]!!.state
+
+                if (!rules.containsKey(rightSideVariable)) {
+                    if (rightSideVariableState in concreteValues) {
+                        blockState[variableName]!!.state = rightSideVariableState
+                    } else if (rightSideVariable !in independent) {
+                        rules[rightSideVariable] = Rule(variableName, Rule.Type.COPY)
+                    }
+                }
             } else {
+
+
                 blockState[variableName]!!.state = AnalysisLattice.Element.OTHER
                 independent.add(variableName)
                 rules.remove(variableName)
