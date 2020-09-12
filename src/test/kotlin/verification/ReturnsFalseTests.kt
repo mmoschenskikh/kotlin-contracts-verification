@@ -17,6 +17,15 @@ class ReturnsFalseTests {
         assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsFalseContract(states, conditions))
     }
 
+    @Test
+    fun isNullOrEmptyTest() {
+        val functionName = "isNullOrEmpty"
+        val classPath = "target/test-classes/samples/ReturnsStdlibContractsKt.class"
+        val states = prepareForContractCheck(functionName, classPath)
+        val conditions = mapOf("arg$0" to AnalysisLattice.Element.NOTNULL)
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsFalseContract(states, conditions))
+    }
+
     private val rnntcClassPath = "target/test-classes/samples/ReturnsSmthTestContractsKt.class"
 
     @Test
