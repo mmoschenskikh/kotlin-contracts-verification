@@ -55,16 +55,20 @@ fun checkReturnsTrueContract(
         block = blocks.pop()
     }
 
+    var anyBranchChecked = false
     for (b in blocks) {
-        if (blockStates[b]!![returnValue]!!.state == AnalysisLattice.Element.TRUE)
+        if (blockStates[b]!![returnValue]!!.state == AnalysisLattice.Element.TRUE) {
+            anyBranchChecked = true
             if (checkConditions(
                     blockStates[b]!!,
                     conditions
                 ) == ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT
             )
                 return ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT
+        }
     }
-    return ContractInfo.FUNCTION_MATCHES_THE_CONTRACT
+    if (anyBranchChecked) return ContractInfo.FUNCTION_MATCHES_THE_CONTRACT
+    return ContractInfo.INAPPLICABLE_CONTRACT
 }
 
 fun checkReturnsNullContract(
@@ -107,16 +111,20 @@ fun checkReturnsNullContract(
         block = blocks.pop()
     }
 
+    var anyBranchChecked = false
     for (b in blocks) {
-        if (blockStates[b]!![returnValue]!!.state == AnalysisLattice.Element.NULL)
+        if (blockStates[b]!![returnValue]!!.state == AnalysisLattice.Element.NULL) {
+            anyBranchChecked = true
             if (checkConditions(
                     blockStates[b]!!,
                     conditions
                 ) == ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT
             )
                 return ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT
+        }
     }
-    return ContractInfo.FUNCTION_MATCHES_THE_CONTRACT
+    if (anyBranchChecked) return ContractInfo.FUNCTION_MATCHES_THE_CONTRACT
+    return ContractInfo.INAPPLICABLE_CONTRACT
 }
 
 fun checkReturnsNotNullContract(
@@ -159,16 +167,20 @@ fun checkReturnsNotNullContract(
         block = blocks.pop()
     }
 
+    var anyBranchChecked = false
     for (b in blocks) {
-        if (blockStates[b]!![returnValue]!!.state in notNullValues)
+        if (blockStates[b]!![returnValue]!!.state in notNullValues) {
+            anyBranchChecked = true
             if (checkConditions(
                     blockStates[b]!!,
                     conditions
                 ) == ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT
             )
                 return ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT
+        }
     }
-    return ContractInfo.FUNCTION_MATCHES_THE_CONTRACT
+    if (anyBranchChecked) return ContractInfo.FUNCTION_MATCHES_THE_CONTRACT
+    return ContractInfo.INAPPLICABLE_CONTRACT
 }
 
 private val notNullValues = setOf(
