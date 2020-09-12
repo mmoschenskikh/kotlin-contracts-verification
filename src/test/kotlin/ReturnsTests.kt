@@ -92,7 +92,7 @@ class ReturnsTests {
     }
 
     @Test
-    fun contractInContractTest() { // Works with inline functions only
+    fun contractInContractTest() {
         val functionName = "contractInsideContract"
         val states = prepareForContractCheck(functionName, rnntcClassPath)
         val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)
