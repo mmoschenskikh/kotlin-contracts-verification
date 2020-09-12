@@ -40,7 +40,7 @@ fun checkReturnsTrueContract(
         blockStates[returnBlock]!![returnValue]!!.state == AnalysisLattice.Element.TRUE ->
             return checkConditions(blockStates[returnBlock]!!, conditions)
         blockStates[returnBlock]!![returnValue]!!.state != AnalysisLattice.Element.TOP
-                || blockStates[returnBlock]!![returnValue]!!.state != AnalysisLattice.Element.NOTNULL ->
+                && blockStates[returnBlock]!![returnValue]!!.state != AnalysisLattice.Element.NOTNULL ->
             return ContractInfo.INAPPLICABLE_CONTRACT
     }
 
