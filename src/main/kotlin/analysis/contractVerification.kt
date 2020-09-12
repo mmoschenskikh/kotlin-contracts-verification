@@ -71,6 +71,63 @@ fun checkReturnsTrueContract(
     return ContractInfo.INAPPLICABLE_CONTRACT
 }
 
+fun checkReturnsFalseContract(
+    blockStates: Map<BasicBlock, Map<String, AnalysisLattice>>,
+    conditions: Map<String, AnalysisLattice.Element>
+): ContractInfo {
+    val returnBlock = blockStates.keys.find { bb -> bb.instructions.any { it.print().startsWith("return") } }
+        ?: throw IllegalStateException("No return block found")
+    val returnValue =
+        try {
+            returnBlock.instructions.last().operands.first().toString()
+        } catch (e: NoSuchElementException) {
+            "Unit"
+        }
+
+    when (returnValue) {
+        "0" -> return checkConditions(blockStates[returnBlock]!!, conditions)
+        else ->
+            if (variableRegex.none { returnValue.matches(it) })
+                return ContractInfo.INAPPLICABLE_CONTRACT
+    }
+
+    when {
+        blockStates[returnBlock]!![returnValue]!!.state == AnalysisLattice.Element.BOTTOM ->
+            return ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT
+        blockStates[returnBlock]!![returnValue]!!.state == AnalysisLattice.Element.FALSE ->
+            return checkConditions(blockStates[returnBlock]!!, conditions)
+        blockStates[returnBlock]!![returnValue]!!.state != AnalysisLattice.Element.TOP
+                && blockStates[returnBlock]!![returnValue]!!.state != AnalysisLattice.Element.NOTNULL ->
+            return ContractInfo.INAPPLICABLE_CONTRACT
+    }
+
+    val blocks = dequeOf(returnBlock)
+    var block = blocks.pop()
+    val highestState = blockStates[block]!![returnValue]!!.state
+
+    while (true) {
+        blocks.addAll(block.predecessors)
+        if (block.predecessors.any { blockStates[it]!![returnValue]!!.state != highestState })
+            break
+        block = blocks.pop()
+    }
+
+    var anyBranchChecked = false
+    for (b in blocks) {
+        if (blockStates[b]!![returnValue]!!.state == AnalysisLattice.Element.FALSE) {
+            anyBranchChecked = true
+            if (checkConditions(
+                    blockStates[b]!!,
+                    conditions
+                ) == ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT
+            )
+                return ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT
+        }
+    }
+    if (anyBranchChecked) return ContractInfo.FUNCTION_MATCHES_THE_CONTRACT
+    return ContractInfo.INAPPLICABLE_CONTRACT
+}
+
 fun checkReturnsNullContract(
     blockStates: Map<BasicBlock, Map<String, AnalysisLattice>>,
     conditions: Map<String, AnalysisLattice.Element>

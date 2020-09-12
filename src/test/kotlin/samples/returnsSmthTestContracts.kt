@@ -10,6 +10,7 @@ fun empty(int: Number) {
         returns() implies (int is Int)
         returns(null) implies (int is Int)
         returns(true) implies (int is Int)
+        returns(false) implies (int is Int)
     }
 }
 
@@ -20,6 +21,7 @@ fun onlyNull(param: Any?): Unit? {
         returns() implies (param != null)
         returns(null) implies (param != null)
         returns(true) implies (param != null)
+        returns(false) implies (param != null)
     }
     return null
 }
@@ -32,6 +34,7 @@ fun onlyString(cond: Boolean): String {
         returns()
         returns(null)
         returns(true)
+        returns(false)
     }
     return "hi there"
 }
@@ -43,6 +46,8 @@ fun instanceOfCheck(param: Any?): Boolean {
         returns() implies (param is String)
         returns(null) implies (param is String)
         returns(true) implies (param is String)
+        // Note that contract changed for returns(false) effect
+        returns(false) implies (param !is String)
     }
     return param is String
 }
@@ -55,6 +60,7 @@ fun Any?.contractOnReceiver(): Unit? {
         // Note that contract changed for returns(null) effect
         returns(null) implies (this@contractOnReceiver == null)
         returns(true) implies (this@contractOnReceiver != null)
+        returns(false) implies (this@contractOnReceiver != null)
     }
     return if (this == null) null else Unit
 }
@@ -66,6 +72,7 @@ fun contractInsideContract(condition: Boolean) {
         returns() implies (condition)
         returns(null) implies (condition)
         returns(true) implies (condition)
+        returns(false) implies (condition)
     }
     require(condition) // Function matches the contract because require() is inline function
 }
@@ -77,4 +84,13 @@ fun speciallyForReturnsTrue(condition: Boolean): Boolean? {
         returns(true) implies (condition)
     }
     return if (condition) true else null
+}
+
+// Only for returns(false)
+@kotlin.contracts.ExperimentalContracts
+fun speciallyForReturnsFalse(condition: Boolean): Boolean? {
+    contract {
+        returns(false) implies (!condition)
+    }
+    return condition
 }

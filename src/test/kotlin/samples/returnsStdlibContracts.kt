@@ -54,3 +54,12 @@ inline fun <T : Any> checkNotNull(value: T?, lazyMessage: () -> Any): T {
         return value
     }
 }
+
+@ExperimentalContracts
+inline fun <T> Collection<T>?.isNullOrEmpty(): Boolean {
+    contract {
+        returns(false) implies (this@isNullOrEmpty != null)
+    }
+
+    return this == null || this.isEmpty()
+}
