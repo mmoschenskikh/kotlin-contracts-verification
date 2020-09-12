@@ -33,7 +33,7 @@ class ReturnsNotNullTests {
         assertEquals(ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
     }
 
-    private val rnntcClassPath = "target/test-classes/samples/ReturnsNotNullTestContractsKt.class"
+    private val rnntcClassPath = "target/test-classes/samples/ReturnsSmthTestContractsKt.class"
 
     @Test
     fun emptyFunctionTest() {
@@ -76,7 +76,7 @@ class ReturnsNotNullTests {
     }
 
     @Test
-    fun contractInContractTest() {
+    fun contractInContractTest() { // Works with inline functions only
         val functionName = "contractInsideContract"
         val states = prepareForContractCheck(functionName, rnntcClassPath)
         val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)

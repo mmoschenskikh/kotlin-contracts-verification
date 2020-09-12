@@ -7,6 +7,7 @@ import kotlin.contracts.contract
 fun empty(int: Number) {
     contract {
         returnsNotNull() implies (int is Int)
+        returns() implies (int is Int)
     }
 }
 
@@ -14,6 +15,7 @@ fun empty(int: Number) {
 fun onlyNull(param: Any?): Unit? {
     contract {
         returnsNotNull() implies (param != null)
+        returns() implies (param != null)
     }
     return null
 }
@@ -23,6 +25,7 @@ fun onlyNull(param: Any?): Unit? {
 fun onlyString(cond: Boolean): String {
     contract {
         returnsNotNull()
+        returns()
     }
     return "hi there"
 }
@@ -31,6 +34,7 @@ fun onlyString(cond: Boolean): String {
 fun instanceOfCheck(param: Any?): Boolean? {
     contract {
         returnsNotNull() implies (param is String)
+        returns() implies (param is String)
     }
     return param is String
 }
@@ -39,6 +43,7 @@ fun instanceOfCheck(param: Any?): Boolean? {
 fun Any?.contractOnReceiver(): Unit? {
     contract {
         returnsNotNull() implies (this@contractOnReceiver != null)
+        returns() implies (this@contractOnReceiver != null)
     }
     return if (this == null) null else Unit
 }
@@ -47,6 +52,7 @@ fun Any?.contractOnReceiver(): Unit? {
 fun contractInsideContract(condition: Boolean) {
     contract {
         returnsNotNull() implies (condition)
+        returns() implies (condition)
     }
     require(condition)
 }

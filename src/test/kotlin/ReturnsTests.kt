@@ -1,7 +1,6 @@
 import analysis.AnalysisLattice
 import analysis.ContractInfo
 import analysis.checkReturnsContract
-import analysis.checkReturnsNotNullContract
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -23,7 +22,7 @@ class ReturnsTests {
         val functionName = "require"
         val states = prepareForContractCheck(functionName, rtcClassPath)
         val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)
-        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsContract(states, conditions))
     }
 
     @Test
@@ -31,7 +30,7 @@ class ReturnsTests {
         val functionName = "requireNotNull"
         val states = prepareForContractCheck(functionName, rtcClassPath)
         val conditions = mapOf("arg$0" to AnalysisLattice.Element.NOTNULL)
-        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsContract(states, conditions))
     }
 
     @Test
@@ -39,7 +38,7 @@ class ReturnsTests {
         val functionName = "check"
         val states = prepareForContractCheck(functionName, rtcClassPath)
         val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)
-        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsContract(states, conditions))
     }
 
     @Test
@@ -47,6 +46,56 @@ class ReturnsTests {
         val functionName = "checkNotNull"
         val states = prepareForContractCheck(functionName, rtcClassPath)
         val conditions = mapOf("arg$0" to AnalysisLattice.Element.NOTNULL)
-        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsContract(states, conditions))
+    }
+
+    private val rnntcClassPath = "target/test-classes/samples/ReturnsSmthTestContractsKt.class"
+
+    @Test
+    fun emptyFunctionTest() {
+        val functionName = "empty"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions = mapOf("arg$0 instanceOf java/lang/Integer" to AnalysisLattice.Element.TRUE)
+        assertEquals(ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT, checkReturnsContract(states, conditions))
+    }
+
+    @Test
+    fun onlyNullTest() {
+        val functionName = "onlyNull"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions = mapOf("arg$0" to AnalysisLattice.Element.NOTNULL)
+        assertEquals(ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT, checkReturnsContract(states, conditions))
+    }
+
+    @Test
+    fun onlyStringTest() {
+        val functionName = "onlyString"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions: Map<String, AnalysisLattice.Element> = emptyMap()
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsContract(states, conditions))
+    }
+
+    @Test
+    fun instanceOfCheckTest() {
+        val functionName = "instanceOfCheck"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions = mapOf("arg$0 instanceOf java/lang/String" to AnalysisLattice.Element.TRUE)
+        assertEquals(ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT, checkReturnsContract(states, conditions))
+    }
+
+    @Test
+    fun contractOnReceiverTest() {
+        val functionName = "contractOnReceiver"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions = mapOf("arg$0" to AnalysisLattice.Element.NOTNULL)
+        assertEquals(ContractInfo.FUNCTION_DOES_NOT_MATCH_THE_CONTRACT, checkReturnsContract(states, conditions))
+    }
+
+    @Test
+    fun contractInContractTest() { // Works with inline functions only
+        val functionName = "contractInsideContract"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsContract(states, conditions))
     }
 }
