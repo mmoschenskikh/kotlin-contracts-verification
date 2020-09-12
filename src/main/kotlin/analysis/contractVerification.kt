@@ -3,6 +3,15 @@ package analysis
 import com.abdullin.kthelper.collection.dequeOf
 import org.jetbrains.research.kfg.ir.BasicBlock
 
+fun checkReturnsContract(
+    blockStates: Map<BasicBlock, Map<String, AnalysisLattice>>,
+    conditions: Map<String, AnalysisLattice.Element>
+): ContractInfo {
+    val returnBlock = blockStates.keys.find { bb -> bb.instructions.any { it.print().startsWith("return") } }
+        ?: throw IllegalStateException("No return block found")
+    return checkConditions(blockStates[returnBlock]!!, conditions)
+}
+
 fun checkReturnsNotNullContract(
     blockStates: Map<BasicBlock, Map<String, AnalysisLattice>>,
     conditions: Map<String, AnalysisLattice.Element>
