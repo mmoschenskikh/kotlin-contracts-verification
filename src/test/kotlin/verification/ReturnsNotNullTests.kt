@@ -84,4 +84,12 @@ class ReturnsNotNullTests {
         val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)
         assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
     }
+
+    @Test
+    fun checkWithSubclassTest() {
+        val functionName = "checkWithSubclass"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions = mapOf("arg$0 instanceOf java/lang/CharSequence" to AnalysisLattice.Element.TRUE)
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
+    }
 }

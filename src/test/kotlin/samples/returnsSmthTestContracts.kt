@@ -94,3 +94,19 @@ fun speciallyForReturnsFalse(condition: Boolean): Boolean? {
     }
     return condition
 }
+
+@kotlin.contracts.ExperimentalContracts
+fun checkWithCast(something: Any?) {
+    contract {
+        returns() implies (something is String)
+    }
+    something as String
+}
+
+@ExperimentalContracts
+fun checkWithSubclass(something: Any?): Boolean? {
+    contract {
+        returnsNotNull() implies (something is CharSequence)
+    }
+    return if (something is String) true else null
+}
