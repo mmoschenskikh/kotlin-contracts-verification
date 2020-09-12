@@ -17,7 +17,7 @@ class ReturnsTests {
         assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsContract(states, conditions))
     }
 
-    private val rtcClassPath = "target/test-classes/samples/ReturnsTestContractsKt.class"
+    private val rtcClassPath = "target/test-classes/samples/ReturnsStdlibContractsKt.class"
 
     @Test
     fun requireTest() {
