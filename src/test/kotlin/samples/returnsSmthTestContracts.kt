@@ -69,3 +69,12 @@ fun contractInsideContract(condition: Boolean) {
     }
     require(condition) // Function matches the contract because require() is inline function
 }
+
+// Only for returns(true)
+@kotlin.contracts.ExperimentalContracts
+fun speciallyForReturnsTrue(condition: Boolean): Boolean? {
+    contract {
+        returns(true) implies (condition)
+    }
+    return if (condition) true else null
+}

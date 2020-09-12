@@ -84,4 +84,12 @@ class ReturnsTrueTests {
         val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)
         assertEquals(ContractInfo.INAPPLICABLE_CONTRACT, checkReturnsTrueContract(states, conditions))
     }
+
+    @Test
+    fun checkIfCanMatchTest() {
+        val functionName = "speciallyForReturnsTrue"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsTrueContract(states, conditions))
+    }
 }
