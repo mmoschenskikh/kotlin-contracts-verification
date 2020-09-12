@@ -1,3 +1,5 @@
+package verification
+
 import analysis.*
 import org.jetbrains.research.kfg.ir.BasicBlock
 import util.getClassNode

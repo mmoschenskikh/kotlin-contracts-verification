@@ -1,3 +1,5 @@
+package verification
+
 import analysis.AnalysisLattice
 import analysis.ContractInfo
 import analysis.checkReturnsContract

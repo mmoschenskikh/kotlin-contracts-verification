@@ -9,6 +9,7 @@ fun empty(int: Number) {
         returnsNotNull() implies (int is Int)
         returns() implies (int is Int)
         returns(null) implies (int is Int)
+        returns(true) implies (int is Int)
     }
 }
 
@@ -18,6 +19,7 @@ fun onlyNull(param: Any?): Unit? {
         returnsNotNull() implies (param != null)
         returns() implies (param != null)
         returns(null) implies (param != null)
+        returns(true) implies (param != null)
     }
     return null
 }
@@ -29,6 +31,7 @@ fun onlyString(cond: Boolean): String {
         returnsNotNull()
         returns()
         returns(null)
+        returns(true)
     }
     return "hi there"
 }
@@ -39,6 +42,7 @@ fun instanceOfCheck(param: Any?): Boolean {
         returnsNotNull() implies (param is String)
         returns() implies (param is String)
         returns(null) implies (param is String)
+        returns(true) implies (param is String)
     }
     return param is String
 }
@@ -50,6 +54,7 @@ fun Any?.contractOnReceiver(): Unit? {
         returns() implies (this@contractOnReceiver != null)
         // Note that contract changed for returns(null) effect
         returns(null) implies (this@contractOnReceiver == null)
+        returns(true) implies (this@contractOnReceiver != null)
     }
     return if (this == null) null else Unit
 }
@@ -60,6 +65,7 @@ fun contractInsideContract(condition: Boolean) {
         returnsNotNull() implies (condition)
         returns() implies (condition)
         returns(null) implies (condition)
+        returns(true) implies (condition)
     }
     require(condition) // Function matches the contract because require() is inline function
 }
