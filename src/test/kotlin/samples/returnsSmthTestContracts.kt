@@ -110,3 +110,32 @@ fun checkWithSubclass(something: Any?): Boolean? {
     }
     return if (something is String) true else null
 }
+
+@ExperimentalContracts
+fun inLoopCheck(int: Int, condition: Boolean): Boolean? {
+    contract {
+        returnsNotNull() implies (condition)
+    }
+    var i = int.toDouble()
+    while (i != 0.0) {
+        i *= -0.5
+        if (i == 0.375) {
+            if (condition)
+                break
+        }
+    }
+    return if (i == 0.0) null else true
+}
+
+@ExperimentalContracts
+fun recurrentContract(condition: Boolean) {
+    contract {
+        returns() implies (condition)
+    }
+    if (!condition) {
+        recurrentContract(!condition)
+        throw Exception()
+    } else {
+        return
+    }
+}

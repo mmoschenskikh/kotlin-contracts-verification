@@ -108,4 +108,12 @@ class ReturnsTests {
         val conditions = mapOf("arg$0 instanceOf java/lang/String" to AnalysisLattice.Element.TRUE)
         assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsContract(states, conditions))
     }
+
+    @Test
+    fun recurrentContractTest() {
+        val functionName = "recurrentContract"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions = mapOf("arg$0" to AnalysisLattice.Element.TRUE)
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsContract(states, conditions))
+    }
 }

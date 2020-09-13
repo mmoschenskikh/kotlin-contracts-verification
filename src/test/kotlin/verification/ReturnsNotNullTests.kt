@@ -92,4 +92,12 @@ class ReturnsNotNullTests {
         val conditions = mapOf("arg$0 instanceOf java/lang/CharSequence" to AnalysisLattice.Element.TRUE)
         assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
     }
+
+    @Test
+    fun inLoopCheckTest() {
+        val functionName = "inLoopCheck"
+        val states = prepareForContractCheck(functionName, rnntcClassPath)
+        val conditions = mapOf("arg$1" to AnalysisLattice.Element.TRUE)
+        assertEquals(ContractInfo.FUNCTION_MATCHES_THE_CONTRACT, checkReturnsNotNullContract(states, conditions))
+    }
 }
