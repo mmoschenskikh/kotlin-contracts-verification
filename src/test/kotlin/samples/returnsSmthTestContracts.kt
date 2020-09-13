@@ -128,12 +128,12 @@ fun inLoopCheck(int: Int, condition: Boolean): Boolean? {
 }
 
 @ExperimentalContracts
-fun recurrentContract(condition: Boolean) {
+fun recursiveContract(condition: Boolean) {
     contract {
         returns() implies (condition)
     }
     if (!condition) {
-        recurrentContract(!condition)
+        recursiveContract(!condition)
         throw Exception()
     } else {
         return
